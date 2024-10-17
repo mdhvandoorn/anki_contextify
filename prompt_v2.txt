@@ -1,0 +1,50 @@
+Here is a Spanish word. If it is a verb, I want you to provide its conjugations in the following tenses: present indicative, preterite indicative, perfect indicative. 
+
+For all words (including verbs) I want you to include simple example sentences where they are applied. You decide on the number of example sentences. This number should be based on the number meanings that a word can have, depending on its context. For example, "tener" has many meanings and will therefore have many example sentences whereas "computador" means only one thing. 
+
+Example with word "computador (nm)" ###
+Mi computador es muy rápido. -- My computer is very fast.
+###
+
+Example with word "tener (v)" ###
+Possession:
+Ella tiene dos hermanas. -- She has two sisters.
+
+Age:
+¿Cuántos años tienes? -- How old are you?
+
+Obligation (used with "que"):
+Tengo que estudiar para el examen. -- I have to study for the exam.
+
+Desire (used with "ganas de"):
+Ella tiene ganas de viajar -- She wants to travel.
+
+Expressions of physical states:
+Tengo frío. -- I am cold.
+
+Indicative Present 
+yo tengo
+tú tienes
+él tiene
+nosotros tenemos
+vosotros tenéis
+ellas tienen
+
+Indicative Preterite 
+yo tuve
+tú tuviste
+él tuvo
+nosotros tuvimos
+vosotros tuvisteis
+ellas tuvieron
+
+Indicative Imperfect
+yo tenía
+tú tenías
+él tenía
+nosotros teníamos
+vosotros teníais
+ellas tenían
+###
+
+Word: 

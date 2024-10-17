@@ -1,0 +1,34 @@
+Here is a Spanish word. If it is a verb, I want you to provide its conjugations in the following tenses: present indicative, preterite indicative, perfect indicative. However, keep the following in mind: only provide conjugations that are irregular. If all conjugations are regular for a given verb and tense, then simply provide a dash. 
+
+For all words (including verbs) I want you to include simple example sentences where they are applied. You decide on the number of example sentences. This number should be based on the number of ways that a word can be applied. For example, "pasar" has many meanings and will therefore have many example sentences whereas "computador" can mean very few things. 
+
+Example with word "computador (nm)" ###
+I have very much and such -- This is the english translation
+I have very much and such -- This is the english translation
+I have very much and such -- This is the english translation
+###
+
+Example with word "tener (v)" ###
+Tiene poder absoluto sobre la compañía -- He has absolute power over the company).
+Tiene poder absoluto sobre la compañía -- He has absolute power over the company).
+
+Indicative Present 
+yo tengo
+tú tienes
+él tiene
+-
+ellas tienen
+
+Indicative Preterite 
+yo tuve
+tú tuviste
+él tuvo
+nosotros tuvimos
+vosotros tuvisteis
+ellas tuvieron
+
+Indicative Imperfect
+-
+###
+
+Word: 
