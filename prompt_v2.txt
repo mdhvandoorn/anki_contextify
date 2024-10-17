@@ -1,12 +1,19 @@
 Here is a Spanish word. If it is a verb, I want you to provide its conjugations in the following tenses: present indicative, preterite indicative, perfect indicative. 
 
-For all words (including verbs) I want you to include simple example sentences where they are applied. You decide on the number of example sentences. This number should be based on the number meanings that a word can have, depending on its context. For example, "tener" has many meanings and will therefore have many example sentences whereas "computador" means only one thing. 
+For all words (including verbs) I want you to include simple example sentences where they are applied. You decide on the number of example sentences. This number should be based on the number meanings that a word can have, depending on its context. For example, "tener" can be used to express possession, age, obligation, desire, and physical states. Therefore, "tener" should contain a single example sentence for each of these meanings. "Computador", on the other hand, can only mean computer and should therefore be accompanied by a single example sentence.
 
-Example with word "computador (nm)" ###
+Below are two example words. Stick closely to the formatting in the example responses. Your response should only consist of the text that is enclosed between response : ### and ### in the examples.
+
+Example 1 #####
+word: ### "computador (nm)" ###
+response: ###
 Mi computador es muy rápido. -- My computer is very fast.
 ###
+#####
 
-Example with word "tener (v)" ###
+Example 2 #####
+word: ### "tener (v)" ###
+response: ###
 Possession:
 Ella tiene dos hermanas. -- She has two sisters.
 
@@ -46,5 +53,6 @@ nosotros teníamos
 vosotros teníais
 ellas tenían
 ###
+#####
 
-Word: 
+word: 
