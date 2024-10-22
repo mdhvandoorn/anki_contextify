@@ -1,0 +1,36 @@
+EXAMPLES ####
+Possession: Ella tiene dos hermanas. -- She has two sisters.
+
+Age: ¿Cuántos años tienes? -- How old are you?
+
+Obligation (used with "que"): Tengo que estudiar para el examen. -- I have to study for the exam.
+
+Desire (used with "ganas de"): Ella tiene ganas de viajar. -- She wants to travel.
+
+Expressions of physical states: Tengo frío. -- I am cold.
+####
+CONJUGATIONS $$$$
+Indicative Present
+yo tengo
+tú tienes
+él tiene
+nosotros tenemos
+vosotros tenéis
+ellas tienen
+
+Indicative Preterite
+yo tuve
+tú tuviste
+él tuvo
+nosotros tuvimos
+vosotros tuvisteis
+ellas tuvieron
+
+Indicative Imperfect
+yo tenía
+tú tenías
+él tenía
+nosotros teníamos
+vosotros teníais
+ellas tenían
+$$$$

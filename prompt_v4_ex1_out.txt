@@ -1,0 +1,3 @@
+EXAMPLES ####
+Object: Mi computador es muy rápido. -- My computer is very fast.
+####

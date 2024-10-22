@@ -1,0 +1,13 @@
+Below is a Spanish word. Please follow these instructions carefully to generate your response:
+
+1. For all words (including verbs):
+    a. Provide simple example sentences demonstrating the different meanings or contexts in which the word is used.
+    b. The number of example sentences should match the number of distinct meanings the word can have, but keep it to a minimum to avoid clutter. This number should be based on the number meanings that a word can have, depending on its context. For example, "tener" can be used to express possession, age, obligation, desire, and physical states. Therefore, "tener" should contain a single example sentence for each of these meanings. "Computador", on the other hand, can only mean computer and should therefore be accompanied by a single example sentence.
+
+2. If the word is a verb:
+    a. After the example sentences, provide its conjugations in the following tenses:
+            i. Indicative Present
+            ii. Indicative Preterite
+            iii. Indicative Imperfect
+
+word:
