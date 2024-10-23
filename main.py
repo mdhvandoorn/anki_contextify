@@ -2,10 +2,14 @@ import difflib
 import pandas as pd
 import os
 import re
+import sys
+import time
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from pprint import pprint
+
+import csv
 
 PROMPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,6 +20,9 @@ LOC_EX_1_OUT = os.path.join(PROMPT_DIR, "prompt_v4_ex1_out.txt")
 
 LOC_EX_2_IN = os.path.join(PROMPT_DIR, "prompt_v4_ex2_in.txt")
 LOC_EX_2_OUT = os.path.join(PROMPT_DIR, "prompt_v4_ex2_out.txt")
+
+# or None
+N_ROWS = None
 
 PRESENT_INDICATIVE_CONJUG = {
     "ar": {
@@ -112,6 +119,23 @@ TARGET_FIELD = 3
 
 
 def main():
+    start_time = time.time()
+
+    arg_names = ["input_file", "output_file"]
+
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != len(arg_names) + 1:
+        usage_str = "Usage: python main.py " + " ".join([f"<{arg}>" for arg in arg_names])
+        print(usage_str)
+        sys.exit(1)
+
+    print("Arguments received:")
+    for i, arg in enumerate(sys.argv[1:], 1):
+        print(f"Argument {i} ({arg_names[i-1]}): {arg}")
+
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+
     api_key = os.getenv("OPENAI_API_KEY")
 
     os.environ["OPENAI_API_KEY"] = api_key
@@ -119,13 +143,15 @@ def main():
     client = OpenAI()
 
     org_notes = pd.read_csv(
-        "test_export.txt", sep="\t", skiprows=6, header=None
+        input_file, sep="\t", skiprows=6, header=None, nrows=N_ROWS
     )
 
     notes = org_notes.copy(deep=True)
 
-    print(notes[SOURCE_FIELD])
-
+    # The Spanish field contains "Key to Abbreviations" for a card. It is not
+    # like the cards that contain words that are supposed to be learned.
+    # It is an exception with unknown rationale and should be ignored.
+    notes = notes[notes[SOURCE_FIELD] != "Key to Abbreviations"]
     # Use regular expression to capture everything up to the first ")"
     notes["org_word"] = notes[SOURCE_FIELD].str.extract(r"([^)]*\))")
 
@@ -138,8 +164,6 @@ def main():
     prompt = get_prompt(LOC_PROMPT)
 
     cot_messages = get_cot_messages(prompt)
-
-    print(prompt)
 
     notes[["with_context", "in_tokens", "out_tokens"]] = notes.apply(
         lambda row: get_response(
@@ -159,16 +183,26 @@ def main():
 
     notes["final_examples"] = notes["examples"].apply(get_html_examples)
 
-    notes["final_html"] = notes["final_examples"] + notes[
-        "final_conjugations"
-    ].fillna("")
+    notes["final_html"] = (
+        notes["org_word"]
+        + notes["final_examples"]
+        + notes["final_conjugations"].fillna("")
+    )
 
     org_notes[SOURCE_FIELD] = notes["final_html"]
 
-    org_notes.to_csv("contexified.txt", sep="\t", index=False, header=False)
+    # quoting=csv.QUOTE_NONE to prevent insertion of quotation marks as this
+    # prohibits expected html interpretation
+    org_notes.to_csv(
+        "contexified.txt",
+        sep="\t",
+        index=False,
+        header=False,
+        quoting=csv.QUOTE_NONE,
+    )
 
     # Read the first six lines from original export file
-    with open("test_export.txt", "r") as file1:
+    with open(input_file, "r") as file1:
         first_six_lines = [next(file1) for _ in range(6)]
 
     # Get the content of the contextified file
@@ -177,10 +211,19 @@ def main():
 
     # Append and write final contextified deck
     combined_content = first_six_lines + file2_content
-    with open("final.txt", "w") as output_file:
+    with open(output_file, "w") as output_file:
         output_file.writelines(combined_content)
 
-    print()
+    total_in_tokens = notes["in_tokens"].sum()
+    total_out_tokens = notes["out_tokens"].sum()
+
+    end_time = time.time()
+
+    exec_time_minutes = (end_time - start_time) / 60
+
+    print(
+        f"Contextified deck saved to: final.txt\nTotal input tokens: {total_in_tokens}; total output tokens: {total_out_tokens}.This took {exec_time_minutes} minutes.\n"
+    )
 
 
 def get_html_examples(examples: str) -> str:
