@@ -228,7 +228,7 @@ def get_responses(
     responses = []
     for count, (index, row) in enumerate(df.iterrows(), start=1):
         if count % 100 == 0:
-            print(f"Processing note {count} ({round(count/df.shape[0],1)}%)")
+            print(f"Processing note {count} ({round(count/df.shape[0]*100,1)}%)")
         org_word = row["org_word"]
         prompt = org_prompt
         prompt = insert_org_word(prompt, org_word)
