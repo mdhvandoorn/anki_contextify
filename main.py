@@ -243,8 +243,7 @@ def get_responses(
         response = completion.choices[0].message.content
         in_tokens = completion.usage.prompt_tokens
         out_tokens = completion.usage.completion_tokens
-        # Call the existing get_response function
-        # response, in_tokens, out_tokens = get_response(org_word, client, prompt, cot_messages)
+
         responses.append((response, in_tokens, out_tokens))
     # Convert the list of tuples into a DataFrame
     response_df = pd.DataFrame(
