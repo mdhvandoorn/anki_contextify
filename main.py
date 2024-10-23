@@ -165,12 +165,7 @@ def main():
 
     cot_messages = get_cot_messages(prompt)
 
-    notes[["with_context", "in_tokens", "out_tokens"]] = notes.apply(
-        lambda row: get_response(
-            row["org_word"], client, prompt, cot_messages
-        ),
-        axis=1,
-    ).apply(pd.Series)
+    notes = get_responses(notes, client, prompt, cot_messages)
 
     notes[["examples", "conjugations"]] = notes.apply(
         lambda row: extract_context_components(row["with_context"]),
@@ -224,6 +219,40 @@ def main():
     print(
         f"Contextified deck saved to: final.txt\nTotal input tokens: {total_in_tokens}; total output tokens: {total_out_tokens}.This took {exec_time_minutes} minutes.\n"
     )
+
+
+def get_responses(
+    df: pd.DataFrame, client: OpenAI, prompt: str, cot_messages: list
+) -> pd.DataFrame:
+    org_prompt = prompt
+    responses = []
+    for count, (index, row) in enumerate(df.iterrows(), start=1):
+        if count % 100 == 0:
+            print(f"Processing note {count} ({round(count/df.shape[0],1)}%)")
+        org_word = row["org_word"]
+        prompt = org_prompt
+        prompt = insert_org_word(prompt, org_word)
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.5,
+            messages=cot_messages
+            + [
+                {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            ],
+        )
+        response = completion.choices[0].message.content
+        in_tokens = completion.usage.prompt_tokens
+        out_tokens = completion.usage.completion_tokens
+        # Call the existing get_response function
+        # response, in_tokens, out_tokens = get_response(org_word, client, prompt, cot_messages)
+        responses.append((response, in_tokens, out_tokens))
+    # Convert the list of tuples into a DataFrame
+    response_df = pd.DataFrame(
+        responses, columns=["with_context", "in_tokens", "out_tokens"]
+    )
+    # Concatenate the original DataFrame with the new response DataFrame
+    df = pd.concat([df.reset_index(drop=True), response_df], axis=1)
+    return df
 
 
 def get_html_examples(examples: str) -> str:
@@ -530,26 +559,6 @@ def insert_org_word(prompt, org_word):
     else:
         # If the word is not found, raise error
         raise RuntimeError("Could not insert org_word in prompt")
-
-
-def get_response(
-    org_word: str, client: OpenAI, prompt: str, cot_messages: list
-) -> str:
-
-    prompt = insert_org_word(prompt, org_word)
-
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.5,
-        messages=cot_messages
-        + [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
-    )
-
-    response = completion.choices[0].message.content
-    in_tokens = completion.usage.prompt_tokens
-    out_tokens = completion.usage.completion_tokens
-
-    return response, in_tokens, out_tokens
 
 
 if __name__ == "__main__":
