@@ -280,7 +280,6 @@ def get_responses(
 ) -> pd.DataFrame:
     retry = False if len(failed_indices) == 0 else True
     org_prompt = prompt
-    # responses = []
 
     for count, (index, row) in enumerate(df.iterrows(), start=1):
         if not retry and count % 100 == 0:
@@ -311,13 +310,6 @@ def get_responses(
             df.loc[index, "in_tokens"] += in_tokens
             df.loc[index, "out_tokens"] += out_tokens
 
-    #         responses.append((response, in_tokens, out_tokens))
-    # # Convert the list of tuples into a DataFrame
-    # response_df = pd.DataFrame(
-    #     responses, columns=["with_context", "in_tokens", "out_tokens"]
-    # )
-    # Concatenate the original DataFrame with the new response DataFrame
-    # df = pd.concat([df.reset_index(drop=True), response_df], axis=1)
     return df
 
 
