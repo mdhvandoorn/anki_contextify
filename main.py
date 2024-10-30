@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+import traceback
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -111,6 +112,15 @@ CONJUGATIONS = {
     "IMPERFECT_INDICATIVE_CONJUG": IMPERFECT_INDICATIVE_CONJUG,
 }
 
+REFLEXIVE_PRONOUNS = {
+    "yo": "me",
+    "tú": "te",
+    "él": "se",
+    "nosotros": "nos",
+    "vosotros": "os",
+    "ellas": "se",
+}
+
 # take environment variables from .env.
 load_dotenv()
 
@@ -125,7 +135,9 @@ def main():
 
     # Check if the correct number of arguments is provided
     if len(sys.argv) != len(arg_names) + 1:
-        usage_str = "Usage: python main.py " + " ".join([f"<{arg}>" for arg in arg_names])
+        usage_str = "Usage: python main.py " + " ".join(
+            [f"<{arg}>" for arg in arg_names]
+        )
         print(usage_str)
         sys.exit(1)
 
@@ -165,16 +177,46 @@ def main():
 
     cot_messages = get_cot_messages(prompt)
 
-    notes = get_responses(notes, client, prompt, cot_messages)
+    notes["with_context"] = None
+    notes[["in_tokens", "out_tokens"]] = 0
+    failed_indices = []
+
+    notes = get_responses(notes, client, prompt, cot_messages, failed_indices)
+
+    # Since get_response() step can take so long, save the responses before
+    # continuing in case of unhandled errors downstream
+    notes.to_pickle("notes_w_responses.pkl")
+
+    notes = pd.read_pickle("notes_w_responses.pkl")
 
     notes[["examples", "conjugations"]] = notes.apply(
         lambda row: extract_context_components(row["with_context"]),
         axis=1,
     ).apply(pd.Series)
 
-    final_conjug = get_final_verb_conjugations(notes)
+    retries = 0
+    notes["final_conjugations"] = None
 
-    notes["final_conjugations"] = final_conjug
+    failed_indices = set_final_verb_conjugations(notes, failed_indices)
+
+    while len(failed_indices) > 0:
+        print(f"Retrying failed rows: attempt {retries+1}/5.")
+
+        notes = get_responses(
+            notes, client, prompt, cot_messages, failed_indices
+        )
+
+        notes[["examples", "conjugations"]] = notes.apply(
+            lambda row: extract_context_components(row["with_context"]),
+            axis=1,
+        ).apply(pd.Series)
+
+        failed_indices = set_final_verb_conjugations(notes, failed_indices)
+
+        retries += 1
+
+        if retries > 4:
+            raise RuntimeError("Could not parse all rows.")
 
     notes["final_examples"] = notes["examples"].apply(get_html_examples)
 
@@ -212,45 +254,70 @@ def main():
     total_in_tokens = notes["in_tokens"].sum()
     total_out_tokens = notes["out_tokens"].sum()
 
+    # Check if the notes_w_responses.pkl exists and then remove it
+    if os.path.exists("notes_w_responses.pkl"):
+        os.remove("notes_w_responses.pkl")
+
+    # Check if the contexified.txt exists and then remove it
+    if os.path.exists("contexified.txt"):
+        os.remove("contexified.txt")
+
     end_time = time.time()
 
-    exec_time_minutes = (end_time - start_time) / 60
+    exec_time_minutes = round((end_time - start_time) / 60, 1)
 
     print(
-        f"Contextified deck saved to: final.txt\nTotal input tokens: {total_in_tokens}; total output tokens: {total_out_tokens}.This took {exec_time_minutes} minutes.\n"
+        f"Contextified deck saved to: final.txt\nTotal input tokens: {total_in_tokens}; total output tokens: {total_out_tokens}. This took {exec_time_minutes} minutes.\n"
     )
 
 
 def get_responses(
-    df: pd.DataFrame, client: OpenAI, prompt: str, cot_messages: list
+    df: pd.DataFrame,
+    client: OpenAI,
+    prompt: str,
+    cot_messages: list,
+    failed_indices: list,
 ) -> pd.DataFrame:
+    retry = False if len(failed_indices) == 0 else True
     org_prompt = prompt
-    responses = []
-    for count, (index, row) in enumerate(df.iterrows(), start=1):
-        if count % 100 == 0:
-            print(f"Processing note {count} ({round(count/df.shape[0]*100,1)}%)")
-        org_word = row["org_word"]
-        prompt = org_prompt
-        prompt = insert_org_word(prompt, org_word)
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.5,
-            messages=cot_messages
-            + [
-                {"role": "user", "content": [{"type": "text", "text": prompt}]}
-            ],
-        )
-        response = completion.choices[0].message.content
-        in_tokens = completion.usage.prompt_tokens
-        out_tokens = completion.usage.completion_tokens
+    # responses = []
 
-        responses.append((response, in_tokens, out_tokens))
-    # Convert the list of tuples into a DataFrame
-    response_df = pd.DataFrame(
-        responses, columns=["with_context", "in_tokens", "out_tokens"]
-    )
+    for count, (index, row) in enumerate(df.iterrows(), start=1):
+        if not retry and count % 100 == 0:
+            print(
+                f"Processing note {count} ({round(count/df.shape[0]*100,1)}%)"
+            )
+
+        if not retry or retry and index in failed_indices:
+            org_word = row["org_word"]
+            prompt = org_prompt
+            prompt = insert_org_word(prompt, org_word)
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.5,
+                messages=cot_messages
+                + [
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": prompt}],
+                    }
+                ],
+            )
+            response = completion.choices[0].message.content
+            in_tokens = completion.usage.prompt_tokens
+            out_tokens = completion.usage.completion_tokens
+
+            df.loc[index, "with_context"] = response
+            df.loc[index, "in_tokens"] += in_tokens
+            df.loc[index, "out_tokens"] += out_tokens
+
+    #         responses.append((response, in_tokens, out_tokens))
+    # # Convert the list of tuples into a DataFrame
+    # response_df = pd.DataFrame(
+    #     responses, columns=["with_context", "in_tokens", "out_tokens"]
+    # )
     # Concatenate the original DataFrame with the new response DataFrame
-    df = pd.concat([df.reset_index(drop=True), response_df], axis=1)
+    # df = pd.concat([df.reset_index(drop=True), response_df], axis=1)
     return df
 
 
@@ -360,21 +427,43 @@ def create_final_conjug_html(conj_dict):
     return final_conjug_html
 
 
-def get_final_verb_conjugations(df: pd.DataFrame) -> pd.DataFrame:
-    final_conjug = []
+def set_final_verb_conjugations(
+    df: pd.DataFrame, failed_indices: list
+) -> list:
+    retry = False if len(failed_indices) == 0 else True
 
     for index, row in df.iterrows():
-        if row["verb_flag"]:
-            expected_conjug = get_expected_conjugation(row["clean_word"])
-            actual_conjug = llm_conjug_to_dict(row["conjugations"])
-            deviations = find_deviations(expected_conjug, actual_conjug)
-            final_conjug_txt = create_final_conjug_html(deviations)
+        if row["verb_flag"] and (
+            not retry or retry and index in failed_indices
+        ):
+            try:
+                expected_conjug, reflexive = get_expected_conjugation(
+                    row["clean_word"]
+                )
+                actual_conjug = llm_conjug_to_dict(
+                    row["conjugations"], reflexive
+                )
+                deviations = find_deviations(expected_conjug, actual_conjug)
+                final_conjug_txt = create_final_conjug_html(deviations)
 
-            final_conjug.append(final_conjug_txt)
-        else:
-            final_conjug.append(None)
+                df.loc[index, "final_conjugations"] = final_conjug_txt
 
-    return final_conjug
+                if index in failed_indices:
+                    failed_indices.remove(index)
+
+                    if len(failed_indices) == 0:
+                        break
+
+            except Exception as e:
+                if index not in failed_indices:
+                    failed_indices.append(index)
+                print(
+                    f"An exception occurred at index {index}. Row ignored and new LLM response will be generated later."
+                )
+                # print(e)
+                # traceback.print_exc()
+
+    return failed_indices
 
 
 def get_deviation_indices(expected, actual):
@@ -399,7 +488,7 @@ def find_deviations(expected_conjugations, actual_conjugations):
                 expected_form = expected_conjugations[tense].get(subject)
                 if actual_form != expected_form:  # Compare actual vs expected
                     deviating_indices = get_deviation_indices(
-                        expected_form, actual_form
+                        actual_form, expected_form
                     )
                     tense_deviations[subject] = [
                         actual_form,
@@ -412,7 +501,7 @@ def find_deviations(expected_conjugations, actual_conjugations):
     return deviations
 
 
-def llm_conjug_to_dict(text):
+def llm_conjug_to_dict(text, reflexive: bool):
     # Split the text into sections by tense
     sections = text.split("\n\n")
 
@@ -427,24 +516,41 @@ def llm_conjug_to_dict(text):
 
         for line in lines[1:]:
             parts = line.split()
+
             subject = parts[0]
             verb_form = parts[1]
+
+            # line ::= "yo me apuro" > parts ::= ["yo", "me", "apuro"]
+            # Save reflexive part as subject to make the analysis of the
+            # conjugation easier
+            if reflexive:
+                subject = " ".join(parts[:2])
+                verb_form = parts[2]
+
             conjugation_dict[tense_name][subject] = verb_form
 
     return conjugation_dict
 
 
 def get_expected_conjugation(verb: str) -> dict:
-    root = verb[:-2]
+    reflexive = False
 
-    if verb.endswith("ar"):
-        verb_type = "ar"
-    elif verb.endswith("er"):
-        verb_type = "er"
-    elif verb.endswith("ir"):
-        verb_type = "ir"
-    else:
-        return None  # Not a valid infinitive verb
+    if verb.endswith("se"):
+        reflexive = True
+
+    root = verb[:-2]
+    verb_type = verb[-2:]
+
+    if reflexive:
+        # E.g. apurarse
+        root = verb[:-4]
+        verb_type = verb[-4:-2]
+
+    # Some verbs end with "ír". They are conjugated like "ir"
+    verb_type = "ir" if verb_type == "ír" else verb_type
+
+    if verb_type not in ["ar", "er", "ir"]:
+        raise ValueError(f"Could not identify verb type for verb {verb}")
 
     # Generate expected_conjugation
     expected_conjugation = {
@@ -469,7 +575,18 @@ def get_expected_conjugation(verb: str) -> dict:
         },
     }
 
-    return expected_conjugation
+    if reflexive:
+        # Save reflexive part as subject to make the analysis of the conjugation
+        # easier
+        for tense, conjugations in expected_conjugation.items():
+            expected_conjugation[tense] = {
+                f"{subject} {REFLEXIVE_PRONOUNS[subject]}": conjugations[
+                    subject
+                ]
+                for subject in conjugations
+            }
+
+    return expected_conjugation, reflexive
 
 
 def extract_context_components(context: str) -> tuple[str, set[None, str]]:
