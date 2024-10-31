@@ -20,7 +20,7 @@ The OpenAI API is used to generate these enrichments.
 12. Export the result as a txt file, which can be imported directly into Anki to update the specified field without altering the other fields.
 
 ## Performance
-Beware that querying OpenAI can take a while. The [Essential Spanish Vocabulary Top 5000](https://ankiweb.net/shared/info/241428882) deck contains 5000 notes, which results in 5000 API requests. As of 31-10-2024 this took 111 minutes with the 4o-mini model. 
+Beware that querying OpenAI can take a while. The [Essential Spanish Vocabulary Top 5000](https://ankiweb.net/shared/info/241428882) deck contains 5000 notes, which results in 5000 API requests. As of October 31, 2024 this took 111 minutes with the 4o-mini model. 
 
 # Feedback, Questions, and Contributions
 This is a quick side project born out of a need to automate the enrichment of the [Essential Spanish Vocabulary Top 5000](https://ankiweb.net/shared/info/241428882) deck. As such, it’s currently not generalized for other decks, and some parts of the process could be more efficient. Feel free to suggest improvements or reach out with feedback/questions!
